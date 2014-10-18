@@ -1,18 +1,32 @@
 require 'craigslist_scraper/craigslist'
+require 'byebug'
 
 describe CraigsList do
   let!(:craigslist) { CraigsList.new }
   
+  describe ".section" do
+    before { craigslist.stub(:open).and_return(File.read(File.dirname(__FILE__) + '/mock_craigslist_data_10_17_2014.html')) }
+
+    it "returns an array with all the items" do
+      craigslist.section.length.should == 100
+      craigslist.section[0].keys.should == [:data_id, :description, :posted_at, :url, :price]
+    end
+
+    it "exracts the date" do
+      craigslist.section[0][:posted_at].should == "2014-10-17 21:17"
+    end
+  end
+
   describe ".search" do
-    before { craigslist.stub(:open).and_return(File.read(File.dirname(__FILE__) + '/mock_craigslist_data.html')) }
+    before { craigslist.stub(:open).and_return(File.read(File.dirname(__FILE__) + '/mock_craigslist_data_10_17_2014.html')) }
     
     it "returns an array with all the items" do
       craigslist.search.length.should == 100
-      craigslist.search[0].keys.should == [:data_id, :description, :url, :price]
+      craigslist.search[0].keys.should == [:data_id, :description, :posted_at, :url, :price]
     end
 	
     it "has the right keys " do
-      craigslist.search[0].keys.should == [:data_id, :description, :url, :price]
+      craigslist.search[0].keys.should == [:data_id, :description, :posted_at, :url, :price]
     end
 	
     it "addes '+' to white space in queries" do
@@ -32,12 +46,16 @@ describe CraigsList do
     end
     
     it "exracts the price" do
-      craigslist.search[0][:price].should == "70"
+      craigslist.search[0][:price].should == "325"
+    end
+
+    it "exracts the date" do
+      craigslist.search[0][:posted_at].should == "2014-10-17 21:17"
     end
     
     it "builds the correct reference url" do
       city = "shanghai"
-      craigslist.search(city: city)[0][:url].should == "http://#{city}.craigslist.org/mob/3849318365.html"
+      craigslist.search(city: city)[0][:url].should == "http://#{city}.craigslist.org/sby/mob/4719922340.html"
     end
 
     it "returns [error: {}] if OpenURI::HTTPError is thrown" do

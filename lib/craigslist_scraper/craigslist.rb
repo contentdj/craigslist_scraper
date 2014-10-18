@@ -6,7 +6,7 @@ require_relative 'cities'
 class CraigsList
   include Cities
   
-  VALID_FIELDS = [:query, :srchType]
+  VALID_FIELDS = [:query, :srchType, :s]
   
   ERRORS = [OpenURI::HTTPError]
   
@@ -20,14 +20,23 @@ class CraigsList
     begin
       doc = Nokogiri::HTML(open(uri))
 
-      doc.css('p.row').flat_map do |link|
-        [
-         data_id: link["data-pid"] ,
-         description:  link.css("a").text,
-         url: "http://#{options[:city]}.craigslist.org#{link.css("a")[0]["href"]}",
-         price: extract_price(link.css("span.price").text)
-        ]
-      end
+      parse_item(options[:city], doc)
+    rescue *ERRORS => e
+      [{error: "error opening city: #{options[:city]}"} ]
+    end
+  end
+
+  def section(options ={})
+    if options[:title_only]
+      options.merge!(srchType: "T")
+      options.delete(:title_only)
+    end
+    uri = "http://#{options[:city]}.craigslist.org/search/#{options[:section]}?#{to_query(options)}"
+
+    begin
+      doc = Nokogiri::HTML(open(uri))
+      
+      parse_item(options[:city], doc)
     rescue *ERRORS => e
       [{error: "error opening city: #{options[:city]}"} ]
     end
@@ -84,8 +93,20 @@ class CraigsList
     end
   end
   
-  private
+private
   
+  def parse_item(city, doc)
+    doc.css('p.row').flat_map do |link|
+      [
+       data_id: link["data-pid"],
+       description: link.css("span.pl a").text,
+       posted_at: link.at('time')["datetime"],
+       url: "http://#{city}.craigslist.org#{link.css("a")[0]["href"]}",
+       price: !link.at("span.price").nil? ? extract_price(link.at("span.price").text) : 0
+      ]
+    end
+  end
+
   def extract_city(method_name)
     
     if /titles/ =~ method_name
